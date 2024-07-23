@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+
+from nnuebit.visbit import main as visbit
+
+def main():
+    visbit()
+
+if __name__ == '__main__':
+    main()
