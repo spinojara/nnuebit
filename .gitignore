@@ -1,0 +1,10 @@
+/*
+**/.*
+
+!.gitignore
+!README
+!COPYING
+!setup.py
+
+!bin
+!nnuebit
