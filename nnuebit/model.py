@@ -2,6 +2,7 @@
 
 import torch
 import random
+import sys
 
 K_HALF_DIMENSIONS = 256
 FT_IN_DIMS = 64 * 64 * 10
@@ -49,8 +50,6 @@ class nnue(torch.nn.Module):
         self.hidden2 = torch.nn.Linear(32, 32)
         self.output = torch.nn.Linear(32, 1)
 
-        # Initialize virtual features to 0
-        torch.nn.init.zeros_(self.ft.weight[:, -VIRTUAL:])
         # Psqt Values
         for color in range(0, 2):
             for piece in range(1, 6):
@@ -60,9 +59,9 @@ class nnue(torch.nn.Module):
         torch.nn.init.zeros_(self.output.bias)
 
     def forward(self, features1, features2):
-        f1, psqt1 = torch.split(self.ft(features1), [256, 1], dim = 1)
-        f2, psqt2 = torch.split(self.ft(features2), [256, 1], dim = 1)
-        accumulation = torch.cat([f1, f2], dim = 1)
+        f1, psqt1 = torch.split(self.ft(features1), [256, 1], dim=1)
+        f2, psqt2 = torch.split(self.ft(features2), [256, 1], dim=1)
+        accumulation = torch.cat([f1, f2], dim=1)
         psqtaccumulation = 0.5 * (psqt1 - psqt2)
 
         ft_out = self.clamp(accumulation)
