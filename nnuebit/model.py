@@ -34,7 +34,6 @@ piece_to_index = [
 ]
 
 piece_value = [ 0, 97, 491, 514, 609, 1374, ]
-#piece_value = [ 0, 0, 0, 0, 0, 0 ]
 
 def orient(turn, square):
     return square ^ (0x0 if turn else 0x38)
@@ -49,8 +48,6 @@ class nnue(torch.nn.Module):
         self.hidden1 = torch.nn.Linear(FT_OUT_DIMS, 32)
         self.hidden2 = torch.nn.Linear(32, 32)
         self.output = torch.nn.Linear(32, 1)
-        self.relu = torch.nn.ReLU(inplace = True)
-        self.sigmoid = torch.nn.Sigmoid()
 
         # Initialize virtual features to 0
         torch.nn.init.zeros_(self.ft.weight[:, -VIRTUAL:])
