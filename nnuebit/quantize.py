@@ -7,6 +7,7 @@ from . import model
 
 def quantize(file):
     if not file.endswith('.pt'):
+        print('Input is not .pt')
         return
 
     nnue = model.nnue()
