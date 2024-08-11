@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-from nnuebit.nnuebit import main as nnuebit
-
-def main():
-    nnuebit()
+from nnuebit.nnuebit import main
 
 if __name__ == '__main__':
     main()
