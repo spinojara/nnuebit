@@ -20,13 +20,13 @@ def loss_fn(output, target, exponent):
     wdl_target = torch.sigmoid(scaling * target * sigmoid_scaling)
     return torch.sum(torch.pow(torch.abs(wdl_output - wdl_target), exponent))
 
-def run(nnue, train_data, val_data, epochs, device, lr, gamma, exponent, save_every):
+def run(nnue, train_data, val_data, start_epoch, epochs, device, lr, gamma, exponent, save_every):
     start = time.time()
 
     optimizer = torch.optim.Adam(nnue.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
 
-    for epoch in range(1, epochs + 1):
+    for epoch in range(start_epoch, epochs + start_epoch):
         t = time.time()
         print(f'starting epoch {epoch} of {epochs}')
         
@@ -66,7 +66,8 @@ def run(nnue, train_data, val_data, epochs, device, lr, gamma, exponent, save_ev
             optimizer.step(closure)
 
         if save_every > 0 and epoch % save_every == 0:
-            torch.save(nnue.state_dict(), 'temp.pt')
+            save('temp.ckpt', nnue, '', epoch, lr, gamma, exponent)
+
 
         scheduler.step()
         t = time.time() - t
@@ -75,3 +76,17 @@ def run(nnue, train_data, val_data, epochs, device, lr, gamma, exponent, save_ev
         print(f'estimated time of arrival is {time.strftime('%Y-%m-%d %H:%M', time.localtime(eta))}\n')
 
     print(f'training elapsed {round(time.time() - start, 2)} seconds')
+    return optimizer.param_groups[0]['lr']
+
+def save(name, nnue, train, epoch, lr, gamma, exponent):
+    print(f'epoch: {epoch}')
+    print(f'train: {train}')
+    print(f'lr: {lr}')
+    print(f'gamma: {gamma}')
+    print(f'exponent: {exponent}')
+    torch.save({'nnue': nnue.state_dict(),
+                'epoch': epoch,
+                'train': train,
+                'lr': lr,
+                'gamma': gamma,
+                'exponent': exponent}, name)

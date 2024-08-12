@@ -6,15 +6,15 @@ import argparse
 from . import model
 
 def quantize(file):
-    if not file.endswith('.pt'):
-        print('Input is not .pt')
+    if not file.endswith('.ckpt'):
+        print('Input is not .ckpt')
         return
 
     nnue = model.nnue()
-    nnue.load_state_dict(torch.load(file))
+    nnue.load_state_dict(torch.load(file)['nnue'])
     nnue.clamp_weights()
 
-    out = file.replace('.pt', '.nnue')
+    out = file.replace('.ckpt', '.nnue')
 
     with open(out, 'wb') as f:
         tensor = 127 * (2 ** model.FT_SHIFT) * nnue.ft.bias.view(-1)
@@ -89,11 +89,12 @@ def quantize(file):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('file', type=str, help='Network file (.pt)')
+    parser.add_argument('file', type=str, nargs='+', help='Checkpoint file(s) (.ckpt)')
 
     args = parser.parse_args()
     
-    quantize(args.file)
+    for file in args.file:
+        quantize(file)
 
 if __name__ == '__main__':
     main()
