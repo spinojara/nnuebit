@@ -9,4 +9,9 @@ setup(
         author_email='isak01@gmail.com',
         description='An nnue trainer for bitbit.',
         url='https://github.com/spinojara/nnuebit',
+        install_requires=[
+            torch
+            matplotlib
+            setup
+        ],
 )
