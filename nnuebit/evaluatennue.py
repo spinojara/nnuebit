@@ -30,6 +30,8 @@ def main():
                '-each', 'proto=uci', f'tc={tcadjust(args.tc)}',
                '-openings', 'format=epd', f'file={args.book}', 'order=random',
                '-repeat',
+               '-resultformat', 'Rank,Name,Points,Elo,Error,Games,Score,DScore,LOS',
+               '-ratinginterval', str(engines * (engines - 1)),
                '-pgnout', 'nnue.pgn', 'fi']
 
     for nnue in args.nnue:
