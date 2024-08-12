@@ -6,6 +6,7 @@ import time
 import math
 import argparse
 import datetime
+import sys
 
 from . import batchbit
 from . import model
@@ -21,6 +22,7 @@ def main():
     parser.add_argument('--batch-size', type=int, help='Batch size', default=16384)
     parser.add_argument('--device', type=str, help='Pytorch device', default='cuda')
     parser.add_argument('--load', type=str, help='Load pytorch checkpoint file (.ckpt)', default='')
+    parser.add_argument('--info', action='store_true', help='Print information about the loaded checkpoint file')
     parser.add_argument('--override-training-data', action='store_true', help='Override the training data file used for checkpoint')
     parser.add_argument('--epochs', type=int, help='Number of epochs', default=400)
     parser.add_argument('--start-epoch', type=int, help='Starting epoch', default=1)
@@ -33,18 +35,28 @@ def main():
 
     nnue = model.nnue().to(device=args.device, non_blocking=True)
 
-    if args.load != '':
+    if args.info and not args.load:
+        print('--info without --load')
+        sys.exit(1)
+
+    if args.load:
         ckpt = torch.load(args.load)
-        if ckpt['train'] != '' and ckpt['train'] != args.training_data:
-            print(f'New training data file {args.training_data} is not the same as the old training data file {ckpt['train']}.')
-            print('Pass the flag --override-training-data or use the old training data file.')
-            return
         nnue.load_state_dict(ckpt['nnue'])
         args.start_epoch = ckpt['epoch'] + 1
         # Scale lr according to the scheduler
         args.lr = ckpt['lr'] * (ckpt['gamma'] ** ckpt['epoch'])
         args.gamma = ckpt['gamma']
         args.exponent = ckpt['exponent']
+        if args.info:
+            print(f'epochs: {ckpt['epoch']}')
+            print(f'lr: {ckpt['lr']} ({args.lr})')
+            print(f'gamma: {ckpt['gamma']}')
+            print(f'exponent: {ckpt['exponent']}')
+            return
+        if ckpt['train'] and ckpt['train'] != args.training_data:
+            print(f'New training data file {args.training_data} is not the same as the old training data file {ckpt['train']}.')
+            print('Pass the flag --override-training-data or use the old training data file.')
+            return
 
     train_data = batchbit.batch_open(args.training_data.encode(), args.batch_size, args.random_skip)
     val_data = batchbit.batch_open(args.validation_data.encode(), args.batch_size, 0.0)
