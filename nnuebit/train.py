@@ -25,26 +25,28 @@ def loss_fn(output, target, exponent):
     wdl_target = torch.sigmoid(scaling * target * sigmoid_scaling)
     return torch.sum(torch.pow(torch.abs(wdl_output - wdl_target), exponent))
 
-def train(nnue, train_data, val_data, start_epoch, epochs, device, lr, gamma, exponent, save_every):
+def train(nnue, train_data, val_data, start_epoch, epochs, epoch_size, validation_size, device, lr, gamma, exponent, save_every):
+    epochs += start_epoch - 1
+
     start = time.time()
 
     optimizer = torch.optim.Adam(nnue.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
 
-    for epoch in range(start_epoch, epochs + start_epoch):
+    batchbit.batch_reset(train_data)
+    batchbit.batch_reset(val_data)
+
+    for epoch in range(start_epoch, epochs + 1):
         t = time.time()
         print(f'starting epoch {epoch} of {epochs}')
         
-        batchbit.batch_reset(val_data)
-        loss = 0
         total = 0
+        loss = 0
         cp = 0
-        while True:
+        while total < validation_size:
             batch = batchbit.next_batch(val_data)
-            if (batch.contents.is_empty()):
-                break
             f1, f2, target = batch.contents.get_tensors(device)
-            total += batch.contents.actual_size
+            total += batch.contents.size
             output = nnue(f1, f2)
             loss += loss_fn(output, target, exponent).item()
             cp += loss_fn(output, target, 1.0).item()
@@ -55,23 +57,23 @@ def train(nnue, train_data, val_data, start_epoch, epochs, device, lr, gamma, ex
         print(f'loss is {round(loss, 5)} ({round(losscp)} cp) for validation data')
         print('learning rate is now {:.2e}'.format(optimizer.param_groups[0]['lr']))
         
-        batchbit.batch_reset(train_data)
-        while True:
+        total = 0
+        while total < epoch_size:
             batch = batchbit.next_batch(train_data)
-            if (batch.contents.is_empty()):
-                break
             f1, f2, target = batch.contents.get_tensors(device)
+            total += batch.contents.size
             def closure():
                 optimizer.zero_grad()
                 output = nnue(f1, f2)
-                loss = loss_fn(output, target, exponent) / batch.contents.actual_size
+                loss = loss_fn(output, target, exponent) / batch.contents.size
                 loss.backward()
                 return loss
             nnue.clamp_weights()
             optimizer.step(closure)
 
-        if save_every > 0 and epoch % save_every == 0:
-            save('temp.ckpt', nnue, '', epoch, lr, gamma, exponent)
+        if save_every > 0 and epoch % save_every == 0 and epoch != epochs:
+            name = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
+            save(name, nnue, '', epoch, lr, gamma, exponent)
 
 
         scheduler.step()
@@ -109,9 +111,11 @@ def main():
     parser.add_argument('--override-training-data', action='store_true', help='Override the training data file used for checkpoint')
     parser.add_argument('--epochs', type=int, help='Number of epochs', default=400)
     parser.add_argument('--start-epoch', type=int, help='Starting epoch', default=1)
+    parser.add_argument('--epoch-size', type=int, help='Number of positions per epoch', default=100000000)
+    parser.add_argument('--validation-size', type=int, help='Number of positions for validation', default=1000000)
     parser.add_argument('--lr', type=float, help='Learning rate', default=1e-3)
     parser.add_argument('--gamma', type=float, help='Scheduler gamma', default=0.992)
-    parser.add_argument('--save-every', type=int, help='Save every <x> epochs', default=20)
+    parser.add_argument('--save-every', type=int, help='Save every <x> epochs', default=100)
     parser.add_argument('--exponent', type=float, help='Loss exponent', default=2.0)
 
     args = parser.parse_args()
@@ -123,6 +127,9 @@ def main():
         sys.exit(1)
 
     if args.load:
+        if not args.load.endswith('.ckpt'):
+            print('Loaded file is not a checkpoint file.')
+            sys.exit(2)
         ckpt = torch.load(args.load)
         nnue.load_state_dict(ckpt['nnue'])
         args.start_epoch = ckpt['epoch'] + 1
@@ -144,10 +151,10 @@ def main():
     train_data = batchbit.batch_open(args.training_data.encode(), args.batch_size, args.random_skip)
     val_data = batchbit.batch_open(args.validation_data.encode(), args.batch_size, 0.0)
 
-    lr = train(nnue, train_data, val_data, args.start_epoch, args.epochs, args.device, args.lr, args.gamma, args.exponent, args.save_every)
+    lr = train(nnue, train_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, args.device, args.lr, args.gamma, args.exponent, args.save_every)
 
     name = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
-    train.save(name, nnue, args.training_data, args.start_epoch - 1 + args.epochs, args.lr, args.gamma, args.exponent)
+    save(name, nnue, args.training_data, args.start_epoch - 1 + args.epochs, args.lr, args.gamma, args.exponent)
     quantize.quantize(name)
 
     batchbit.batch_close(train_data)

@@ -50,6 +50,9 @@ class nnue(torch.nn.Module):
         self.hidden2 = torch.nn.Linear(32, 32)
         self.output = torch.nn.Linear(32, 1)
 
+        # Initialize virtual features to 0
+        torch.nn.init.zeros_(self.ft.weight[:, -VIRTUAL:])
+
         # Psqt Values
         for color in range(0, 2):
             for piece in range(1, 6):
