@@ -33,8 +33,8 @@ def train(nnue, train_data, val_data, start_epoch, epochs, epoch_size, validatio
     optimizer = torch.optim.Adam(nnue.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
 
-    batchbit.batch_reset(train_data)
-    batchbit.batch_reset(val_data)
+    batchbit.loader_reset(train_data)
+    batchbit.loader_reset(val_data)
 
     for epoch in range(start_epoch, epochs + 1):
         t = time.time()
@@ -44,7 +44,7 @@ def train(nnue, train_data, val_data, start_epoch, epochs, epoch_size, validatio
         loss = 0
         cp = 0
         while total < validation_size:
-            batch = batchbit.next_batch(val_data)
+            batch = batchbit.batch_fetch(val_data)
             f1, f2, target = batch.contents.get_tensors(device)
             total += batch.contents.size
             output = nnue(f1, f2)
@@ -59,7 +59,7 @@ def train(nnue, train_data, val_data, start_epoch, epochs, epoch_size, validatio
         
         total = 0
         while total < epoch_size:
-            batch = batchbit.next_batch(train_data)
+            batch = batchbit.batch_fetch(train_data)
             f1, f2, target = batch.contents.get_tensors(device)
             total += batch.contents.size
             def closure():
@@ -148,8 +148,8 @@ def main():
             print('Pass the flag --override-training-data or use the old training data file.')
             return
 
-    train_data = batchbit.batch_open(args.training_data.encode(), args.batch_size, args.random_skip)
-    val_data = batchbit.batch_open(args.validation_data.encode(), args.batch_size, 0.0)
+    train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.random_skip)
+    val_data = batchbit.loader_open(args.validation_data.encode(), args.batch_size, 0.0)
 
     lr = train(nnue, train_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, args.device, args.lr, args.gamma, args.exponent, args.save_every)
 
@@ -157,8 +157,8 @@ def main():
     save(name, nnue, args.training_data, args.start_epoch - 1 + args.epochs, args.lr, args.gamma, args.exponent)
     quantize.quantize(name)
 
-    batchbit.batch_close(train_data)
-    batchbit.batch_close(val_data)
+    batchbit.loader_close(train_data)
+    batchbit.loader_close(val_data)
 
 if __name__ == '__main__':
     main()
