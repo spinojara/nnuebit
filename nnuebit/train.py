@@ -142,6 +142,7 @@ def main():
             print(f'lr: {ckpt['lr']} ({args.lr})')
             print(f'gamma: {ckpt['gamma']}')
             print(f'exponent: {ckpt['exponent']}')
+            print(f'data: {ckpt['train']}')
             return
         if ckpt['train'] and ckpt['train'] != args.training_data:
             print(f'New training data file {args.training_data} is not the same as the old training data file {ckpt['train']}.')
