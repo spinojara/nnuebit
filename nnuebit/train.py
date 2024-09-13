@@ -45,9 +45,9 @@ def train(nnue, train_data, val_data, start_epoch, epochs, epoch_size, validatio
         cp = 0
         while total < validation_size:
             batch = batchbit.batch_fetch(val_data)
-            f1, f2, target = batch.contents.get_tensors(device)
+            bucket, f1, f2, target = batch.contents.get_tensors(device)
             total += batch.contents.size
-            output = nnue(f1, f2)
+            output = nnue(bucket, f1, f2)
             loss += loss_fn(output, target, exponent).item()
             cp += loss_fn(output, target, 1.0).item()
         loss /= total
@@ -60,11 +60,11 @@ def train(nnue, train_data, val_data, start_epoch, epochs, epoch_size, validatio
         total = 0
         while total < epoch_size:
             batch = batchbit.batch_fetch(train_data)
-            f1, f2, target = batch.contents.get_tensors(device)
+            bucket, f1, f2, target = batch.contents.get_tensors(device)
             total += batch.contents.size
             def closure():
                 optimizer.zero_grad()
-                output = nnue(f1, f2)
+                output = nnue(bucket, f1, f2)
                 loss = loss_fn(output, target, exponent) / batch.contents.size
                 loss.backward()
                 return loss

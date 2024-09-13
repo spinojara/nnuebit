@@ -10,6 +10,7 @@ class batch(ctypes.Structure):
     _fields_ = [
             ('size', ctypes.c_size_t),
             ('ind_active', ctypes.c_int),
+            ('bucket', ctypes.POINTER(ctypes.c_int64)),
             ('ind1', ctypes.POINTER(ctypes.c_int32)),
             ('ind2', ctypes.POINTER(ctypes.c_int32)),
             ('eval', ctypes.POINTER(ctypes.c_float)),
@@ -17,6 +18,7 @@ class batch(ctypes.Structure):
 
     def get_tensors(self, device):
         eval = torch.from_numpy(numpy.ctypeslib.as_array(self.eval, shape=(self.size, 1))).pin_memory().to(device=device, non_blocking=True)
+        bucket = torch.from_numpy(numpy.ctypeslib.as_array(self.bucket, shape=(self.size, 1))).pin_memory().to(device=device, non_blocking=True)
 
         val1 = torch.ones(self.ind_active).pin_memory().to(device=device, non_blocking=True)
         val2 = torch.ones(self.ind_active).pin_memory().to(device=device, non_blocking=True)
@@ -30,4 +32,4 @@ class batch(ctypes.Structure):
         f1._coalesced_(True)
         f2._coalesced_(True)
 
-        return f1, f2, eval
+        return bucket, f1, f2, eval
