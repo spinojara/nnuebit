@@ -14,6 +14,7 @@ class batch(ctypes.Structure):
             ('ind1', ctypes.POINTER(ctypes.c_int32)),
             ('ind2', ctypes.POINTER(ctypes.c_int32)),
             ('eval', ctypes.POINTER(ctypes.c_float)),
+            ('lambda', ctypes.POINTER(ctypes.c_float)),
     ]
 
     def get_tensors(self, device):
