@@ -117,6 +117,7 @@ def main():
     parser.add_argument('--gamma', type=float, help='Scheduler gamma', default=0.992)
     parser.add_argument('--save-every', type=int, help='Save every <x> epochs', default=100)
     parser.add_argument('--exponent', type=float, help='Loss exponent', default=2.0)
+    parser.add_argument('--lambda', type=float, help='Interpolate between evaluation and game results. 1.0 uses pure evaluation score, and 0.0 uses pure result as score.', default=1.0)
 
     args = parser.parse_args()
 
@@ -125,6 +126,9 @@ def main():
     if args.info and not args.load:
         print('--info without --load')
         sys.exit(1)
+
+    if args.lambda < 0.0 or args.lambda > 1.0:
+        print('lambda must be between 0.0 and 1.0')
 
     if args.load:
         if not args.load.endswith('.ckpt'):
