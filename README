@@ -1,3 +1,8 @@
 nnuebit
 =======
 An nnue trainer for bitbit.
+
+Dependencies
+------------
+nnuebit depends on libbatchbit and libvisbit from
+<https://github.com/spinojara/bitbit>.
