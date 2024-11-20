@@ -17,7 +17,7 @@ batch_fetch.argtypes = [ctypes.c_void_p]
 lib.batch_fetch.restype = ctypes.POINTER(batchbit.batch)
 
 loader_open = lib.loader_open
-loader_open.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_double]
+loader_open.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_double, ctypes.c_int]
 loader_open.restype = ctypes.c_void_p
 
 loader_reset = lib.loader_reset
