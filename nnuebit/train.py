@@ -142,7 +142,9 @@ def main():
 
     args = parser.parse_args()
 
-    nnue = model.nnue().to(device=args.device, non_blocking=True)
+    device = torch.device(args.device)
+
+    nnue = model.nnue().to(device=device, non_blocking=True)
 
     if args.info and not args.load:
         print('--info without --load')
@@ -185,7 +187,7 @@ def main():
     if not val_data:
         sys.exit(1)
 
-    lr = train(nnue, train_data, args.training_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, args.device, args.lr, args.gamma, args.exponent, args.save_every, args.lam, args.weight_decay)
+    lr = train(nnue, train_data, args.training_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, device, args.lr, args.gamma, args.exponent, args.save_every, args.lam, args.weight_decay)
 
     name = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
     save(name, nnue, args.training_data, args.start_epoch - 1 + args.epochs, args.lr, args.gamma, args.exponent, args.lam, args.weight_decay)
