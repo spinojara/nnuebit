@@ -180,6 +180,10 @@ def main():
             print('Pass the flag --override-training-data or use the old training data file.')
             return
 
+    if batchbit.version() != model.VERSION_NNUE:
+        print(f'version mismatch')
+        sys.exit(1)
+
     train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.random_skip, args.lam < 1.0)
     if not train_data:
         sys.exit(1)

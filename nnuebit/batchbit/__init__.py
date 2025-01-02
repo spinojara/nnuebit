@@ -27,3 +27,7 @@ loader_reset.restype = None
 loader_close = lib.loader_close
 loader_close.argtypes = [ctypes.c_void_p]
 loader_close.restype = None
+
+version = lib.batchbit_version
+version.argstypes = None
+version.restype = ctypes.c_int
