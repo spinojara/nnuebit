@@ -140,7 +140,16 @@ def main():
     parser.add_argument('--lambda', dest='lam', type=float, help='Interpolate between evaluation and game results. 1.0 uses pure evaluation score, and 0.0 uses pure result as score.', default=1.0)
     parser.add_argument('--weight-decay', type=float, help='Weight decay', default=0.0)
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    if len(unknown) >= 1:
+        if args.training_data is None:
+            args.training_data = unknown[0]
+        elif args.validation_data is None:
+            args.validation_data = unknown[0]
+    if len(unknown) >= 2:
+        if args.validation_data is None:
+            args.validation_data = unknown[1]
+
 
     device = torch.device(args.device)
 
