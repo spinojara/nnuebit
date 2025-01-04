@@ -40,10 +40,13 @@ def main():
     parser.add_argument('concurrency', type=int, help='Concurrency')
     parser.add_argument('--tc', type=str, help='Time control', default='40/5+0.05')
     parser.add_argument('nnue', type=str, nargs='+', help='NNUE files')
+    parser.add_argument('--reference', type=str, help='bitbit binary reference', default=None)
 
     args = parser.parse_args()
 
     engines = len(args.nnue)
+    if args.reference is not None:
+        engines += 1
 
     if engines < 2:
         print('Input at least two NNUE networks.')
@@ -63,6 +66,8 @@ def main():
 
     for nnue in args.nnue:
         command.extend(['-engine', f'name={nnue}', f'cmd={args.bitbit}', f'option.FileNNUE={nnue}'])
+    if args.reference is not None:
+        command.extend(['-engine', f'name=reference', f'cmd={args.reference}'])
 
     print(*command, sep=' ')
     subprocess.run(command)
