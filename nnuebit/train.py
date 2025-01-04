@@ -121,8 +121,8 @@ def save(name, nnue, train, epoch, lr, gamma, exponent, lam, weight_decay):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('training_data', type=str, help='Training data file')
-    parser.add_argument('validation_data', type=str, help='Validation data file')
+    parser.add_argument('--training-data', type=str, help='Training data file', default=None)
+    parser.add_argument('--validation-data', type=str, help='Validation data file', default=None)
     parser.add_argument('--random-skip', type=float, help='Random skipping frequency', default=0.8)
     parser.add_argument('--batch-size', type=int, help='Batch size', default=16384)
     parser.add_argument('--device', type=str, help='Pytorch device', default='cuda')
@@ -175,13 +175,20 @@ def main():
             print(f'lambda: {ckpt['lam']}')
             print(f'weight decay: {ckpt['weight_decay']}')
             return
-        if ckpt['train'] and ckpt['train'] != args.training_data:
+        if args.training_data is not None and ckpt['train'] and ckpt['train'] != args.training_data:
             print(f'New training data file {args.training_data} is not the same as the old training data file {ckpt['train']}.')
             print('Pass the flag --override-training-data or use the old training data file.')
             return
 
     if batchbit.version() != model.VERSION_NNUE:
         print(f'version mismatch')
+        sys.exit(1)
+
+    if args.training_data is None:
+        print('need --training-data')
+    if args.validation_data is None:
+        print('need --validation-data')
+    if args.training_data is None or args.validation_data is None:
         sys.exit(1)
 
     train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.random_skip, args.lam < 1.0)
