@@ -65,7 +65,7 @@ def main():
                '-pgnout', 'nnue.pgn', 'fi']
 
     for nnue in args.nnue:
-        command.extend(['-engine', f'name={nnue}', f'cmd={args.bitbit}', f'option.FileNNUE={nnue}'])
+        command.extend(['-engine', f'name={nnue.split('/')[-1]}', f'cmd={args.bitbit}', f'option.FileNNUE={nnue}'])
     if args.reference is not None:
         command.extend(['-engine', f'name=reference', f'cmd={args.reference}'])
 
