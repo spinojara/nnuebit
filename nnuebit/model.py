@@ -6,7 +6,7 @@ import sys
 
 VERSION_NNUE = 2
 
-K_HALF_DIMENSIONS = 512
+K_HALF_DIMENSIONS = 128
 FT_OUT_DIMS = 2 * K_HALF_DIMENSIONS
 FV_SCALE = 16
 
@@ -51,10 +51,9 @@ class nnue(torch.nn.Module):
         super(nnue, self).__init__()
         self.buckets = 8
         self.ft = torch.nn.Linear(FT_IN_DIMS + VIRTUAL, K_HALF_DIMENSIONS + self.buckets)
-        self.hidden1 = torch.nn.Linear(FT_OUT_DIMS, 16 * self.buckets)
-        self.hidden2 = torch.nn.Linear(16, 32 * self.buckets)
-        self.output = torch.nn.Linear(32, self.buckets)
-        self.offset = None
+        self.hidden1 = torch.nn.Linear(FT_OUT_DIMS, 16)
+        self.hidden2 = torch.nn.Linear(16, 32)
+        self.output = torch.nn.Linear(32, 1)
 
         # Initialize virtual features to 0
         torch.nn.init.zeros_(self.ft.weight[:, -VIRTUAL:])
@@ -70,10 +69,6 @@ class nnue(torch.nn.Module):
         torch.nn.init.zeros_(self.output.bias)
 
     def forward(self, bucket, features1, features2):
-        if self.offset == None or self.offset.shape[0] != bucket.shape[0]:
-            self.offset = torch.arange(0, bucket.shape[0] * self.buckets, self.buckets, device=bucket.device)
-
-        idx = bucket.flatten() + self.offset
 
         f1, psqt1 = torch.split(self.ft(features1), [K_HALF_DIMENSIONS, self.buckets], dim=1)
         f2, psqt2 = torch.split(self.ft(features2), [K_HALF_DIMENSIONS, self.buckets], dim=1)
@@ -82,13 +77,11 @@ class nnue(torch.nn.Module):
         accumulation = torch.cat([f1, f2], dim=1)
         ft_out = self.clamp(accumulation)
 
-        hidden1_out = self.hidden1(ft_out).reshape(-1, self.buckets, 16)
-        hidden1_out = self.clamp(hidden1_out.view(-1, 16)[idx])
+        hidden1_out = self.clamp(self.hidden1(ft_out))
 
-        hidden2_out = self.hidden2(hidden1_out).reshape(-1, self.buckets, 32)
-        hidden2_out = self.clamp(hidden2_out.view(-1, 32)[idx])
+        hidden2_out = self.clamp(self.hidden2(hidden1_out))
 
-        return self.output(hidden2_out).gather(1, bucket) + FV_SCALE * 2 ** FT_SHIFT * psqtaccumulation / 2 ** SHIFT
+        return self.output(hidden2_out) + FV_SCALE * 2 ** FT_SHIFT * psqtaccumulation / 2 ** SHIFT
 
     def clamp(self, x):
         return x.clamp_(0.0, 1.0)
