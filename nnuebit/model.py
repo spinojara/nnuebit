@@ -66,7 +66,7 @@ class nnue(torch.nn.Module):
         # Initialize output bias to 0
         torch.nn.init.zeros_(self.output.bias)
 
-    def forward(self, bucket, features1, features2):
+    def forward(self, features1, features2):
 
         f1, psqt1 = torch.split(self.ft(features1), [K_HALF_DIMENSIONS, 1], dim=1)
         f2, psqt2 = torch.split(self.ft(features2), [K_HALF_DIMENSIONS, 1], dim=1)
