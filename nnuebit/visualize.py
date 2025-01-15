@@ -6,17 +6,22 @@ import argparse
 import ctypes
 
 def visualize_ft(name, lib):
-    image = np.empty((2560, 4096), dtype=np.int32)
+    image = np.empty((4096, 6144), dtype=np.int32)
     lib.image_ft(image)
     mean = image.mean()
     tmax = np.percentile(image, 95)
     tmin = 0
 
     plt.imshow(image, aspect='auto', cmap='viridis', vmin=tmin, vmax=tmax, interpolation='bilinear')
-    for i in range(1, 8):
-        plt.plot([0, 4095], [i * 40 * 8, i * 40 * 8], color='red')
+    if False:
+        for i in range(1, 2 * 32):
+            plt.plot([0, 6144 - 1], [i * 64, i * 64], color='orange')
+        for i in range(1, 6 * 16):
+            plt.plot([i * 64, i * 64], [0, 4096 - 1], color='orange')
     for i in range(1, 32):
-        plt.plot([i * 16 * 8, i * 16 * 8], [0, 2559], color='red')
+        plt.plot([0, 6144 - 1], [i * 2 * 64, i * 2 * 64], color='red')
+    for i in range(1, 16):
+        plt.plot([i * 6 * 64, i * 6 * 64], [0, 4096 - 1], color='red')
     plt.colorbar()
     plt.axis('off')
     plt.title(f'Input Weights {name}')
@@ -45,7 +50,7 @@ def main():
     lib = ctypes.cdll.LoadLibrary('libvisbit.so')
     
     lib.read_ft_weights.argtypes = [ctypes.c_char_p]
-    lib.read_ft_weights.restype = None
+    lib.read_ft_weights.restype = ctypes.c_int
     
     lib.image_ft.argtypes = [np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags="C_CONTIGUOUS")]
     lib.image_ft.restype = None

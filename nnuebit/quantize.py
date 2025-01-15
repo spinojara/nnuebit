@@ -2,6 +2,7 @@
 
 import torch
 import argparse
+import struct
 
 from . import model
 
@@ -17,6 +18,8 @@ def quantize(file):
     out = file.replace('.ckpt', '.nnue')
 
     with open(out, 'wb') as f:
+        f.write(struct.pack('<H', model.VERSION_NNUE))
+
         tensor = 127 * (2 ** model.FT_SHIFT) * nnue.ft.bias.view(-1)
         mean = torch.mean(torch.abs(tensor)).round().long().item()
         tensor = tensor.round().long()
@@ -27,9 +30,9 @@ def quantize(file):
         weight = 127 * (2 ** model.FT_SHIFT) * nnue.ft.weight.t()
         tensor = weight[:model.FT_IN_DIMS, :]
         virtual = weight[-model.VIRTUAL:, :]
-        for i in range(40960):
-            tensor[i] += virtual[i % 640]
-        mean = torch.mean(torch.abs(tensor[:, :256])).round().long().item()
+        for i in range(model.FT_IN_DIMS):
+            tensor[i] += virtual[i % model.VIRTUAL]
+        mean = torch.mean(torch.abs(tensor[:, :model.K_HALF_DIMENSIONS])).round().long().item()
         tensor = tensor.round().long()
         print(torch.min(tensor[:, :256]).item(), "<= ft_weights <=", torch.max(tensor[:, :256]).item(), "absolute mean: ", mean)
         bytes = tensor.detach().numpy().astype('<u2').tobytes()
@@ -77,14 +80,16 @@ def quantize(file):
         bytes = tensor.detach().numpy().astype('<u1').tobytes()
         f.write(bytes)
 
-        print("\npiece values: ")
+        pieces = [ 'Pawn', 'Knight', 'Bishop', 'Rook', 'Queen' ]
 
         for piece in range(1, 6):
             average = 0
             for square in range(0, 64):
-                average += weight[model.make_index_virtual(1, square, piece), model.K_HALF_DIMENSIONS]
-                average -= weight[model.make_index_virtual(0, square, piece), model.K_HALF_DIMENSIONS]
-            print((average / (2 * 64)).round().long().item())
+                average += weight[model.FT_IN_DIMS + model.make_index_virtual(1, square, piece), model.K_HALF_DIMENSIONS].long().item()
+                average -= weight[model.FT_IN_DIMS + model.make_index_virtual(0, square, piece), model.K_HALF_DIMENSIONS].long().item()
+            average /= 2 * 64
+            average = int(average)
+            print(f'{pieces[piece - 1]}: {average}')
 
 def main():
     parser = argparse.ArgumentParser()
