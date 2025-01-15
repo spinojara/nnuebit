@@ -80,15 +80,16 @@ def quantize(file):
         bytes = tensor.detach().numpy().astype('<u1').tobytes()
         f.write(bytes)
 
-        print("\npiece values: ")
+        pieces = [ 'Pawn', 'Knight', 'Bishop', 'Rook', 'Queen' ]
 
         for piece in range(1, 6):
             average = 0
-            for bucket in range(0, 8):
-                for square in range(0, 64):
-                    average += weight[model.FT_IN_DIMS + model.make_index_virtual(1, square, piece), model.K_HALF_DIMENSIONS + bucket]
-                    average -= weight[model.FT_IN_DIMS + model.make_index_virtual(0, square, piece), model.K_HALF_DIMENSIONS + bucket]
-            print((average / (2 * 64 * 8)).round().long().item())
+            for square in range(0, 64):
+                average += weight[model.FT_IN_DIMS + model.make_index_virtual(1, square, piece), model.K_HALF_DIMENSIONS].long().item()
+                average -= weight[model.FT_IN_DIMS + model.make_index_virtual(0, square, piece), model.K_HALF_DIMENSIONS].long().item()
+            average /= 2 * 64
+            average = int(average)
+            print(f'{pieces[piece - 1]}: {average}')
 
 def main():
     parser = argparse.ArgumentParser()
