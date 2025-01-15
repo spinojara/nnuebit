@@ -49,8 +49,7 @@ def make_index_virtual(turn, square, piece):
 class nnue(torch.nn.Module):
     def __init__(self):
         super(nnue, self).__init__()
-        self.buckets = 8
-        self.ft = torch.nn.Linear(FT_IN_DIMS + VIRTUAL, K_HALF_DIMENSIONS + self.buckets)
+        self.ft = torch.nn.Linear(FT_IN_DIMS + VIRTUAL, K_HALF_DIMENSIONS + 1)
         self.hidden1 = torch.nn.Linear(FT_OUT_DIMS, 16)
         self.hidden2 = torch.nn.Linear(16, 32)
         self.output = torch.nn.Linear(32, 1)
@@ -59,21 +58,20 @@ class nnue(torch.nn.Module):
         torch.nn.init.zeros_(self.ft.weight[:, -VIRTUAL:])
 
         # Psqt Values
-        for bucket in range(0, self.buckets):
-            for color in range(0, 2):
-                for piece in range(1, 6):
-                    for square in range(64):
-                        self.ft.weight.data[K_HALF_DIMENSIONS + bucket, FT_IN_DIMS + make_index_virtual(color, square, piece)] = (2 * color - 1) * piece_value[piece] / (127 * 2 ** FT_SHIFT)
+        for color in range(0, 2):
+            for piece in range(1, 6):
+                for square in range(64):
+                    self.ft.weight.data[K_HALF_DIMENSIONS, FT_IN_DIMS + make_index_virtual(color, square, piece)] = (2 * color - 1) * piece_value[piece] / (127 * 2 ** FT_SHIFT)
 
         # Initialize output bias to 0
         torch.nn.init.zeros_(self.output.bias)
 
     def forward(self, bucket, features1, features2):
 
-        f1, psqt1 = torch.split(self.ft(features1), [K_HALF_DIMENSIONS, self.buckets], dim=1)
-        f2, psqt2 = torch.split(self.ft(features2), [K_HALF_DIMENSIONS, self.buckets], dim=1)
+        f1, psqt1 = torch.split(self.ft(features1), [K_HALF_DIMENSIONS, 1], dim=1)
+        f2, psqt2 = torch.split(self.ft(features2), [K_HALF_DIMENSIONS, 1], dim=1)
 
-        psqtaccumulation = 0.5 * (psqt1.gather(1, bucket) - psqt2.gather(1, bucket))
+        psqtaccumulation = 0.5 * (psqt1 - psqt2)
         accumulation = torch.cat([f1, f2], dim=1)
         ft_out = self.clamp(accumulation)
 
