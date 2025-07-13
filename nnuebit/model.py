@@ -41,7 +41,7 @@ piece_to_index = [
 piece_value = [ 0, 97, 491, 514, 609, 1374, ]
 
 def orient(turn, square):
-    return square ^ (0x0 if turn else 0x38) 
+    return square ^ (0x0 if turn else 0x38)
 
 def make_index_virtual(turn, square, piece):
     return orient(turn, square) + piece_to_index[turn][piece]
