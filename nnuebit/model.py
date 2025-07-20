@@ -6,6 +6,10 @@ import sys
 
 VERSION_NNUE = 2
 
+PSQT_BUCKETS = 1
+
+HIDDEN1_OUT_DIMS = 16
+HIDDEN2_OUT_DIMS = 32
 K_HALF_DIMENSIONS = 128
 FT_OUT_DIMS = 2 * K_HALF_DIMENSIONS
 FV_SCALE = 16
@@ -49,29 +53,30 @@ def make_index_virtual(turn, square, piece):
 class nnue(torch.nn.Module):
     def __init__(self):
         super(nnue, self).__init__()
-        self.ft = torch.nn.Linear(FT_IN_DIMS + VIRTUAL, K_HALF_DIMENSIONS + 1)
-        self.hidden1 = torch.nn.Linear(FT_OUT_DIMS, 16)
-        self.hidden2 = torch.nn.Linear(16, 32)
-        self.output = torch.nn.Linear(32, 1)
+        self.ft = torch.nn.Linear(FT_IN_DIMS + VIRTUAL, K_HALF_DIMENSIONS + PSQT_BUCKETS)
+        self.hidden1 = torch.nn.Linear(FT_OUT_DIMS, HIDDEN1_OUT_DIMS)
+        self.hidden2 = torch.nn.Linear(HIDDEN1_OUT_DIMS, HIDDEN2_OUT_DIMS)
+        self.output = torch.nn.Linear(HIDDEN2_OUT_DIMS, 1)
 
         # Initialize virtual features to 0
         torch.nn.init.zeros_(self.ft.weight[:, -VIRTUAL:])
 
         # Psqt Values
-        for color in range(0, 2):
-            for piece in range(1, 6):
-                for square in range(64):
-                    self.ft.weight.data[K_HALF_DIMENSIONS, FT_IN_DIMS + make_index_virtual(color, square, piece)] = (2 * color - 1) * piece_value[piece] / (127 * 2 ** FT_SHIFT)
+        for psqt_bucket in range(0, PSQT_BUCKETS):
+            for color in range(0, 2):
+                for piece in range(1, 6):
+                    for square in range(64):
+                        self.ft.weight.data[K_HALF_DIMENSIONS + psqt_bucket, FT_IN_DIMS + make_index_virtual(color, square, piece)] = (2 * color - 1) * piece_value[piece] / (127 * 2 ** FT_SHIFT)
 
         # Initialize output bias to 0
         torch.nn.init.zeros_(self.output.bias)
 
     def forward(self, features1, features2):
 
-        f1, psqt1 = torch.split(self.ft(features1), [K_HALF_DIMENSIONS, 1], dim=1)
-        f2, psqt2 = torch.split(self.ft(features2), [K_HALF_DIMENSIONS, 1], dim=1)
+        f1, psqt1 = torch.split(self.ft(features1), [K_HALF_DIMENSIONS, PSQT_BUCKETS], dim=1)
+        f2, psqt2 = torch.split(self.ft(features2), [K_HALF_DIMENSIONS, PSQT_BUCKETS], dim=1)
 
-        psqtaccumulation = 0.5 * (psqt1 - psqt2)
+        psqt = 0.5 * (psqt1 - psqt2)
         accumulation = torch.cat([f1, f2], dim=1)
         ft_out = self.clamp(accumulation)
 
@@ -79,7 +84,7 @@ class nnue(torch.nn.Module):
 
         hidden2_out = self.clamp(self.hidden2(hidden1_out))
 
-        return self.output(hidden2_out) + FV_SCALE * 2 ** FT_SHIFT * psqtaccumulation / 2 ** SHIFT
+        return self.output(hidden2_out) + FV_SCALE * 2 ** FT_SHIFT * psqt / (2 ** SHIFT)
 
     def clamp(self, x):
         return x.clamp_(0.0, 1.0)

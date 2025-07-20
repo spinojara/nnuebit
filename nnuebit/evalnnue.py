@@ -61,7 +61,7 @@ def main():
                '-each', 'proto=uci', f'tc={tcadjust(args.tc)}',
                '-openings', 'format=epd', f'file={args.book}', 'order=random',
                '-repeat',
-               '-scoreinterval', str(engines * (engines - 1)),
+               '-ratinginterval', '2',
                '-pgnout', 'nnue.pgn', 'fi']
 
     for nnue in args.nnue:
