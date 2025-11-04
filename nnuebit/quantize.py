@@ -26,7 +26,7 @@ def quantize(file):
         print(torch.min(tensor).item(), "<= ft_biases <=", torch.max(tensor).item(), "absolute mean: ", mean)
         bytes = tensor.detach().numpy().astype('<u2').tobytes()
         f.write(bytes)
-    
+
         weight = 127 * (2 ** model.FT_SHIFT) * nnue.ft.weight.t()
         tensor = weight[:model.FT_IN_DIMS, :]
         virtual = weight[-model.VIRTUAL:, :]
@@ -37,42 +37,42 @@ def quantize(file):
         print(torch.min(tensor[:, :256]).item(), "<= ft_weights <=", torch.max(tensor[:, :256]).item(), "absolute mean: ", mean)
         bytes = tensor.detach().numpy().astype('<u2').tobytes()
         f.write(bytes)
-    
+
         tensor = 127 * (2 ** model.SHIFT) * nnue.hidden1.bias.view(-1)
         mean = torch.mean(torch.abs(tensor)).round().long().item()
         tensor = tensor.round().long()
         print(torch.min(tensor).item(), "<= hidden1_biases <=", torch.max(tensor).item(), "absolute mean: ", mean)
         bytes = tensor.detach().numpy().astype('<u4').tobytes()
         f.write(bytes)
-    
+
         tensor = (2 ** model.SHIFT) * nnue.hidden1.weight.view(-1)
         mean = torch.mean(torch.abs(tensor)).round().long().item()
         tensor = tensor.round().long()
         print(torch.min(tensor).item(), "<= hidden1_weights <=", torch.max(tensor).item(), "absolute mean: ", mean)
         bytes = tensor.detach().numpy().astype('<u1').tobytes()
         f.write(bytes)
-    
+
         tensor = 127 * (2 ** model.SHIFT) * nnue.hidden2.bias.view(-1)
         mean = torch.mean(torch.abs(tensor)).round().long().item()
         tensor = tensor.round().long()
         print(torch.min(tensor).item(), "<= hidden2_biases <=", torch.max(tensor).item(), "absolute mean: ", mean)
         bytes = tensor.detach().numpy().astype('<u4').tobytes()
         f.write(bytes)
-    
+
         tensor = (2 ** model.SHIFT) * nnue.hidden2.weight.view(-1)
         mean = torch.mean(torch.abs(tensor)).round().long().item()
         tensor = tensor.round().long()
         print(torch.min(tensor).item(), "<= hidden2_weights <=", torch.max(tensor).item(), "absolute mean: ", mean)
         bytes = tensor.detach().numpy().astype('<u1').tobytes()
         f.write(bytes)
-        
+
         tensor = 127 * (2 ** model.SHIFT) * nnue.output.bias.view(-1)
         mean = torch.mean(torch.abs(tensor)).round().long().item()
         tensor = tensor.round().long()
         print(torch.min(tensor).item(), "<= output_biases <=", torch.max(tensor).item(), "absolute mean: ", mean)
         bytes = tensor.detach().numpy().astype('<u4').tobytes()
         f.write(bytes)
-    
+
         tensor = (2 ** model.SHIFT) * nnue.output.weight.view(-1)
         mean = torch.mean(torch.abs(tensor)).round().long().item()
         tensor = tensor.round().long()
@@ -100,7 +100,7 @@ def main():
     parser.add_argument('file', type=str, nargs='+', help='Checkpoint file(s) (.ckpt)')
 
     args = parser.parse_args()
-    
+
     for file in args.file:
         quantize(file)
 

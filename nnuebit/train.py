@@ -51,7 +51,7 @@ def train(nnue, train_data, train_data_name, val_data, start_epoch, epochs, epoc
     for epoch in range(start_epoch, epochs + 1):
         t = time.time()
         print(f'starting epoch {epoch} of {epochs}')
-        
+
         total = 0
         loss = 0
         cp = 0
@@ -70,7 +70,7 @@ def train(nnue, train_data, train_data_name, val_data, start_epoch, epochs, epoc
         losscp = 2 * inverse_sigmoid(1 / 2 + cp / 2)
         print(f'loss is {round(loss, 5)} ({round(losscp)} cp) for validation data')
         print('learning rate is now {:.2e}'.format(optimizer.param_groups[0]['lr']))
-        
+
         total = 0
         while total < epoch_size:
             batch = batchbit.batch_fetch(train_data)
