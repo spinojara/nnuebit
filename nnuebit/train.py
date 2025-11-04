@@ -200,10 +200,10 @@ def main():
     if args.training_data is None or args.validation_data is None:
         sys.exit(1)
 
-    train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.random_skip, args.lam < 1.0)
+    train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.random_skip, 1, args.lam < 1.0)
     if not train_data:
         sys.exit(1)
-    val_data = batchbit.loader_open(args.validation_data.encode(), args.batch_size, 0.0, args.lam < 1.0)
+    val_data = batchbit.loader_open(args.validation_data.encode(), args.batch_size, 0.0, 1, args.lam < 1.0)
     if not val_data:
         sys.exit(1)
 
