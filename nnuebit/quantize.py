@@ -6,12 +6,12 @@ import struct
 
 from . import model
 
-def quantize(file):
+def quantize(file: str) -> None:
     if not file.endswith('.ckpt'):
         print('Input is not .ckpt')
         return
 
-    nnue = model.nnue()
+    nnue = model.NNUE()
     nnue.load_state_dict(torch.load(file)['nnue'])
     nnue.clamp_weights()
 
@@ -85,7 +85,7 @@ def quantize(file):
         for piece in range(1, 6):
             print(f'{pieces[piece - 1]}', end='')
             for psqt_bucket in range(0, model.PSQT_BUCKETS):
-                average = 0
+                average: float = 0
                 for square in range(0, 64):
                     average += weight[model.FT_IN_DIMS + model.make_index_virtual(1, square, piece), model.K_HALF_DIMENSIONS + psqt_bucket].long().item()
                     average -= weight[model.FT_IN_DIMS + model.make_index_virtual(0, square, piece), model.K_HALF_DIMENSIONS + psqt_bucket].long().item()
@@ -94,7 +94,7 @@ def quantize(file):
                 print(f' {average:4d}', end='')
             print('\n', end='')
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument('file', type=str, nargs='+', help='Checkpoint file(s) (.ckpt)')

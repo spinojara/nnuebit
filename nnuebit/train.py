@@ -7,6 +7,7 @@ import math
 import argparse
 import datetime
 import sys
+from typing import Any
 
 from . import model
 from . import batchbit
@@ -14,18 +15,18 @@ from . import quantize
 
 sigmoid_scaling = math.log(10) / 400
 scaling = (127 * 64 / 16)
-def sigmoid(x):
+def sigmoid(x: float) -> float:
     return 1 / (1 + math.exp(-sigmoid_scaling * x))
 
-def inverse_sigmoid(y):
+def inverse_sigmoid(y: float) -> float:
     return -math.log(1 / y - 1) / sigmoid_scaling
 
-def loss_fn(output, eval, result, exponent, lam):
+def loss_fn(output: torch.Tensor, eval: torch.Tensor, result: torch.Tensor, exponent: float, lam: float) -> torch.Tensor:
     wdl_output = torch.sigmoid(scaling * output * sigmoid_scaling)
     wdl_target = lam * torch.sigmoid(scaling * eval * sigmoid_scaling) + (1.0 - lam) * result
     return torch.sum(torch.pow(torch.abs(wdl_output - wdl_target), exponent))
 
-def train(nnue, train_data, train_data_name, val_data, start_epoch, epochs, epoch_size, validation_size, device, lr, gamma, exponent, save_every, lam, weight_decay):
+def train(nnue: model.NNUE, train_data: ctypes.c_void_p, train_data_name: str, val_data: ctypes.c_void_p, start_epoch: int, epochs: int, epoch_size: int, validation_size: int, device: torch.device, lr: float, gamma: float, exponent: float, save_every: int, lam: float, weight_decay: float):
     epochs += start_epoch - 1
 
     start = time.time()
@@ -53,8 +54,8 @@ def train(nnue, train_data, train_data_name, val_data, start_epoch, epochs, epoc
         print(f'starting epoch {epoch} of {epochs}')
 
         total = 0
-        loss = 0
-        cp = 0
+        loss: float = 0
+        cp: float = 0
         while total < validation_size:
             batch = batchbit.batch_fetch(val_data)
             if not batch:
@@ -78,7 +79,7 @@ def train(nnue, train_data, train_data_name, val_data, start_epoch, epochs, epoc
                 sys.exit(1)
             f1, f2, eval, result = batch.contents.get_tensors(device)
             total += batch.contents.size
-            def closure():
+            def closure() -> Any:
                 optimizer.zero_grad()
                 output = nnue(f1, f2)
                 loss = loss_fn(output, eval, result, exponent, lam) / batch.contents.size
@@ -88,7 +89,7 @@ def train(nnue, train_data, train_data_name, val_data, start_epoch, epochs, epoc
             optimizer.step(closure)
 
         if save_every > 0 and epoch % save_every == 0 and epoch != epochs:
-            name = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
+            name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
             save(name, nnue, train_data_name, epoch, lr, gamma, exponent, lam, weight_decay)
 
 
@@ -99,9 +100,8 @@ def train(nnue, train_data, train_data_name, val_data, start_epoch, epochs, epoc
         print(f'estimated time of arrival is {time.strftime('%Y-%m-%d %H:%M', time.localtime(eta))}\n')
 
     print(f'training elapsed {round(time.time() - start, 2)} seconds')
-    return optimizer.param_groups[0]['lr']
 
-def save(name, nnue, train, epoch, lr, gamma, exponent, lam, weight_decay):
+def save(name: str, nnue: model.NNUE, train: str, epoch: int, lr: float, gamma: float, exponent: float, lam: float, weight_decay: float) -> None:
     print(f'epoch: {epoch}')
     print(f'train: {train}')
     print(f'lr: {lr}')
@@ -118,7 +118,7 @@ def save(name, nnue, train, epoch, lr, gamma, exponent, lam, weight_decay):
                 'lam': lam,
                 'weight_decay': weight_decay}, name)
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--training-data', type=str, help='Training data file', default=None)
@@ -153,7 +153,7 @@ def main():
 
     device = torch.device(args.device)
 
-    nnue = model.nnue().to(device=device, non_blocking=True)
+    nnue = model.NNUE().to(device=device, non_blocking=True)
 
     if args.info and not args.load:
         print('--info without --load')
@@ -207,9 +207,9 @@ def main():
     if not val_data:
         sys.exit(1)
 
-    lr = train(nnue, train_data, args.training_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, device, args.lr, args.gamma, args.exponent, args.save_every, args.lam, args.weight_decay)
+    train(nnue, train_data, args.training_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, device, args.lr, args.gamma, args.exponent, args.save_every, args.lam, args.weight_decay)
 
-    name = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
+    name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
     save(name, nnue, args.training_data, args.start_epoch - 1 + args.epochs, args.lr, args.gamma, args.exponent, args.lam, args.weight_decay)
     quantize.quantize(name)
 

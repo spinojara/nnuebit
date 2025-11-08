@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import torch
-import random
-import sys
+from typing import Any
 
 VERSION_NNUE = 2
 
@@ -44,15 +43,15 @@ piece_to_index = [
 
 piece_value = [ 0, 97, 491, 514, 609, 1374, ]
 
-def orient(turn, square):
+def orient(turn: int, square: int) -> int:
     return square ^ (0x0 if turn else 0x38)
 
-def make_index_virtual(turn, square, piece):
+def make_index_virtual(turn: int, square: int, piece: int) -> int:
     return orient(turn, square) + piece_to_index[turn][piece]
 
-class nnue(torch.nn.Module):
-    def __init__(self):
-        super(nnue, self).__init__()
+class NNUE(torch.nn.Module):
+    def __init__(self) -> None:
+        super(NNUE, self).__init__()
         self.ft = torch.nn.Linear(FT_IN_DIMS + VIRTUAL, K_HALF_DIMENSIONS + PSQT_BUCKETS)
         self.hidden1 = torch.nn.Linear(FT_OUT_DIMS, HIDDEN1_OUT_DIMS)
         self.hidden2 = torch.nn.Linear(HIDDEN1_OUT_DIMS, HIDDEN2_OUT_DIMS)
@@ -71,7 +70,7 @@ class nnue(torch.nn.Module):
         # Initialize output bias to 0
         torch.nn.init.zeros_(self.output.bias)
 
-    def forward(self, features1, features2):
+    def forward(self, features1: torch.Tensor, features2: torch.Tensor) -> Any:
 
         f1, psqt1 = torch.split(self.ft(features1), [K_HALF_DIMENSIONS, PSQT_BUCKETS], dim=1)
         f2, psqt2 = torch.split(self.ft(features2), [K_HALF_DIMENSIONS, PSQT_BUCKETS], dim=1)
@@ -86,10 +85,10 @@ class nnue(torch.nn.Module):
 
         return self.output(hidden2_out) + FV_SCALE * 2 ** FT_SHIFT * psqt / (2 ** SHIFT)
 
-    def clamp(self, x):
+    def clamp(self, x: torch.Tensor) -> torch.Tensor:
         return x.clamp_(0.0, 1.0)
 
-    def clamp_weights(self):
+    def clamp_weights(self) -> None:
         self.hidden1.weight.data.clamp_(-weight_limit, weight_limit)
         self.hidden2.weight.data.clamp_(-weight_limit, weight_limit)
         self.output.weight.data.clamp_(-weight_limit, weight_limit)

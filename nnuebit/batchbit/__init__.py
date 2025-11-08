@@ -2,19 +2,19 @@
 
 import ctypes
 
-from .batchbit import batch
+from .batchbit import Batch
 
-__all__ = ['batch']
+__all__ = ['batchbit']
 
 lib = ctypes.cdll.LoadLibrary('libbatchbit.so')
 
-lib.batchbit_init.argtypes = None
+lib.batchbit_init.argtypes = []
 lib.batchbit_init.restype = None
 lib.batchbit_init()
 
 batch_fetch = lib.batch_fetch
 batch_fetch.argtypes = [ctypes.c_void_p]
-lib.batch_fetch.restype = ctypes.POINTER(batchbit.batch)
+batch_fetch.restype = ctypes.POINTER(Batch)
 
 loader_open = lib.loader_open
 loader_open.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_double, ctypes.c_int, ctypes.c_int]
@@ -29,5 +29,5 @@ loader_close.argtypes = [ctypes.c_void_p]
 loader_close.restype = None
 
 version = lib.batchbit_version
-version.argstypes = None
+version.argtypes = []
 version.restype = ctypes.c_int

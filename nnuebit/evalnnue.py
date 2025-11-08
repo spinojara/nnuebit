@@ -4,14 +4,14 @@ import argparse
 import subprocess
 import sys
 
-def tcadjust(tc):
+def tcadjust(tc: str) -> str:
     f = open('/etc/bitbit/tcfactor', 'r')
     tcfactor = float(f.read().strip())
     f.close()
 
-    moves = 0
-    maintime = 0
-    increment = 0
+    moves: int = 0
+    maintime: float = 0
+    increment: float = 0
 
     i = tc.find('/')
     if i != -1:
@@ -22,7 +22,7 @@ def tcadjust(tc):
         maintime = float(tc[:i])
         increment = float(tc[i + 1:])
     else:
-        maintime = tc
+        maintime = float(tc)
 
     tc = ''
     if moves > 0:
@@ -33,13 +33,13 @@ def tcadjust(tc):
 
     return tc
 
-def numcpus(cpus):
+def numcpus(cpus: str) -> int:
     if cpus == '' or cpus.startswith(',') or cpus.endswith(',') or cpus.startswith('-') or cpus.endswith('-'):
         raise ValueError
 
     if ',' in cpus:
         s = cpus.split(',', 1)
-        return concurrency(s[0]) + concurrency(s[1])
+        return numcpus(s[0]) + numcpus(s[1])
 
     if '-' in cpus:
         if cpus.count('-') > 1:
@@ -61,7 +61,7 @@ def numcpus(cpus):
 
     return 1
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('bitbit', type=str, help='bitbit binary')
     parser.add_argument('book', type=str, help='Opening book (.epd)')

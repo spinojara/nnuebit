@@ -3,10 +3,11 @@
 import numpy
 import ctypes
 import torch
+from typing import Tuple
 
 from .. import model
 
-class batch(ctypes.Structure):
+class Batch(ctypes.Structure):
     _fields_ = [
             ('size', ctypes.c_size_t),
             ('ind_active', ctypes.c_int),
@@ -16,7 +17,7 @@ class batch(ctypes.Structure):
             ('result', ctypes.POINTER(ctypes.c_float)),
     ]
 
-    def get_tensors(self, device):
+    def get_tensors(self, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         eval = torch.from_numpy(numpy.ctypeslib.as_array(self.eval, shape=(self.size, 1))).pin_memory().to(device=device, non_blocking=True)
         result = torch.from_numpy(numpy.ctypeslib.as_array(self.result, shape=(self.size, 1))).pin_memory().to(device=device, non_blocking=True)
 

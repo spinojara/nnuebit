@@ -5,11 +5,10 @@ import numpy as np
 import argparse
 import ctypes
 
-def visualize_ft(name, lib):
+def visualize_ft(name: str, lib: ctypes.CDLL) -> None:
     image = np.empty((4096, 6144), dtype=np.int32)
     lib.image_ft(image)
-    mean = image.mean()
-    tmax = np.percentile(image, 95)
+    tmax = float(np.percentile(image, 95))
     tmin = 0
 
     plt.imshow(image, aspect='auto', cmap='viridis', vmin=tmin, vmax=tmax, interpolation='bilinear')
@@ -26,8 +25,8 @@ def visualize_ft(name, lib):
     plt.axis('off')
     plt.title(f'Input Weights {name}')
 
-def visualize_psqt(name, lib):
-    fig, axs = plt.subplots(1, 5)
+def visualize_psqt(name: str, lib: ctypes.CDLL) -> None:
+    _, axs = plt.subplots(1, 5)
     pieces = [ 'Pawn', 'Knight', 'Bishop', 'Rook', 'Queen' ]
     image = np.empty((8, 8), dtype=np.int32)
     for i, ax in enumerate(axs.flatten()):
@@ -39,7 +38,7 @@ def visualize_psqt(name, lib):
         ax.set_title(f'{pieces[i % 5]}')
     plt.suptitle(f'Psqt Weights {name}')
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument('file', type=str, help='Network file (.nnue)')
