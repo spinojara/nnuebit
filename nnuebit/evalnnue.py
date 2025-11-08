@@ -90,7 +90,7 @@ def main() -> None:
                '-openings', 'format=epd', f'file={args.book}', 'order=random',
                '-repeat',
                '-ratinginterval', '2',
-               '-pgnout', 'nnue.pgn', 'fi']
+               '-pgnout', 'file=nnue.pgn']
 
     for nnue in args.nnue:
         command.extend(['-engine', f'name={nnue.split('/')[-1]}', f'cmd={args.bitbit}', f'option.FileNNUE={nnue}'])
