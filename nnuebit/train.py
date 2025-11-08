@@ -5,13 +5,12 @@ import ctypes
 import time
 import math
 import argparse
-import datetime
 import sys
+import uuid
 from typing import Any
 
 from . import model
 from . import batchbit
-from . import quantize
 
 sigmoid_scaling = math.log(10) / 400
 scaling = (127 * 64 / 16)
@@ -26,7 +25,7 @@ def loss_fn(output: torch.Tensor, eval: torch.Tensor, result: torch.Tensor, expo
     wdl_target = lam * torch.sigmoid(scaling * eval * sigmoid_scaling) + (1.0 - lam) * result
     return torch.sum(torch.pow(torch.abs(wdl_output - wdl_target), exponent))
 
-def train(nnue: model.NNUE, train_data: ctypes.c_void_p, train_data_name: str, val_data: ctypes.c_void_p, start_epoch: int, epochs: int, epoch_size: int, validation_size: int, device: torch.device, lr: float, gamma: float, exponent: float, save_every: int, lam: float, weight_decay: float):
+def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void_p, start_epoch: int, epochs: int, epoch_size: int, validation_size: int, device: torch.device, lr: float, gamma: float, exponent: float, save_every: int, lam: float, weight_decay: float, uuid: str):
     epochs += start_epoch - 1
 
     start = time.time()
@@ -88,9 +87,8 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, train_data_name: str, v
             nnue.clamp_weights()
             optimizer.step(closure)
 
-        if save_every > 0 and epoch % save_every == 0 and epoch != epochs:
-            name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
-            save(name, nnue, train_data_name, epoch, lr, gamma, exponent, lam, weight_decay)
+        if (save_every > 0 and epoch % save_every == 0) or epoch == epochs:
+            save(nnue=nnue, epoch=epoch, lr=lr, gamma=gamma, exponent=exponent, lam=lam, weight_decay=weight_decay, uuid=uuid)
 
 
         scheduler.step()
@@ -101,9 +99,10 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, train_data_name: str, v
 
     print(f'training elapsed {round(time.time() - start, 2)} seconds')
 
-def save(name: str, nnue: model.NNUE, train: str, epoch: int, lr: float, gamma: float, exponent: float, lam: float, weight_decay: float) -> None:
+def save(nnue: model.NNUE, epoch: int, lr: float, gamma: float, exponent: float, lam: float, weight_decay: float, uuid: str) -> None:
+    name = "%s-%g-%d.ckpt" % (uuid, lam, epoch)
+    print(f'uuid: {uuid}')
     print(f'epoch: {epoch}')
-    print(f'train: {train}')
     print(f'lr: {lr}')
     print(f'gamma: {gamma}')
     print(f'exponent: {exponent}')
@@ -111,12 +110,12 @@ def save(name: str, nnue: model.NNUE, train: str, epoch: int, lr: float, gamma: 
     print(f'weight decay: {weight_decay}')
     torch.save({'nnue': nnue.state_dict(),
                 'epoch': epoch,
-                'train': train,
                 'lr': lr,
                 'gamma': gamma,
                 'exponent': exponent,
                 'lam': lam,
-                'weight_decay': weight_decay}, name)
+                'weight_decay': weight_decay,
+                'uuid': uuid}, name)
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -150,7 +149,6 @@ def main() -> None:
         if args.validation_data is None:
             args.validation_data = unknown[1]
 
-
     device = torch.device(args.device)
 
     nnue = model.NNUE().to(device=device, non_blocking=True)
@@ -162,11 +160,12 @@ def main() -> None:
     if args.lam < 0.0 or args.lam > 1.0:
         print('lambda must be between 0.0 and 1.0')
 
+    nnue_uuid: str | None = None
     if args.load:
         if not args.load.endswith('.ckpt'):
             print('Loaded file is not a checkpoint file.')
             sys.exit(2)
-        ckpt = torch.load(args.load)
+        ckpt: dict[str, Any] = torch.load(args.load)
         nnue.load_state_dict(ckpt['nnue'])
         args.start_epoch = ckpt['epoch'] + 1
         # Scale lr according to the scheduler
@@ -175,19 +174,21 @@ def main() -> None:
         args.exponent = ckpt['exponent']
         args.lam = ckpt['lam']
         args.weight_decay = ckpt['weight_decay']
+        if 'uuid' in ckpt:
+            nnue_uuid = ckpt['uuid']
         if args.info:
+            if 'uuid' in ckpt:
+                print(f'uuid: {ckpt['uuid']}')
             print(f'epochs: {ckpt['epoch']}')
             print(f'lr: {ckpt['lr']} ({args.lr})')
             print(f'gamma: {ckpt['gamma']}')
             print(f'exponent: {ckpt['exponent']}')
-            print(f'data: {ckpt['train']}')
             print(f'lambda: {ckpt['lam']}')
             print(f'weight decay: {ckpt['weight_decay']}')
             return
-        if args.training_data is not None and ckpt['train'] and ckpt['train'] != args.training_data:
-            print(f'New training data file {args.training_data} is not the same as the old training data file {ckpt['train']}.')
-            print('Pass the flag --override-training-data or use the old training data file.')
-            return
+
+    if not nnue_uuid:
+        nnue_uuid = str(uuid.uuid4())
 
     if batchbit.version() != model.VERSION_NNUE:
         print(f'version mismatch')
@@ -195,9 +196,9 @@ def main() -> None:
 
     if args.training_data is None:
         print('need --training-data')
+        sys.exit(1)
     if args.validation_data is None:
         print('need --validation-data')
-    if args.training_data is None or args.validation_data is None:
         sys.exit(1)
 
     train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.random_skip, 1, args.lam < 1.0)
@@ -207,11 +208,7 @@ def main() -> None:
     if not val_data:
         sys.exit(1)
 
-    train(nnue, train_data, args.training_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, device, args.lr, args.gamma, args.exponent, args.save_every, args.lam, args.weight_decay)
-
-    name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ.ckpt')
-    save(name, nnue, args.training_data, args.start_epoch - 1 + args.epochs, args.lr, args.gamma, args.exponent, args.lam, args.weight_decay)
-    quantize.quantize(name)
+    train(nnue, train_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, device, args.lr, args.gamma, args.exponent, args.save_every, args.lam, args.weight_decay, nnue_uuid)
 
     batchbit.loader_close(train_data)
     batchbit.loader_close(val_data)

@@ -6,16 +6,21 @@ import struct
 
 from . import model
 
-def quantize(file: str) -> None:
+def quantize(file: str, out: str | None = None) -> None:
     if not file.endswith('.ckpt'):
         print('Input is not .ckpt')
+        return
+
+    if out is not None and not out.endswith('.nnue'):
+        print('Output is not .nnue')
         return
 
     nnue = model.NNUE()
     nnue.load_state_dict(torch.load(file)['nnue'])
     nnue.clamp_weights()
 
-    out = file.replace('.ckpt', '.nnue')
+    if out is None:
+        out = file.replace('.ckpt', '.nnue')
 
     with open(out, 'wb') as f:
         f.write(struct.pack('<H', model.VERSION_NNUE))
