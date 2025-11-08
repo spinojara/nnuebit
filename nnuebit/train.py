@@ -6,11 +6,11 @@ import time
 import math
 import argparse
 import sys
-import uuid
 from typing import Any
 
 from . import model
 from . import batchbit
+from . import customuuid
 
 sigmoid_scaling = math.log(10) / 400
 scaling = (127 * 64 / 16)
@@ -25,7 +25,7 @@ def loss_fn(output: torch.Tensor, eval: torch.Tensor, result: torch.Tensor, expo
     wdl_target = lam * torch.sigmoid(scaling * eval * sigmoid_scaling) + (1.0 - lam) * result
     return torch.sum(torch.pow(torch.abs(wdl_output - wdl_target), exponent))
 
-def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void_p, start_epoch: int, epochs: int, epoch_size: int, validation_size: int, device: torch.device, lr: float, gamma: float, exponent: float, save_every: int, lam: float, weight_decay: float, uuid: str):
+def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void_p, start_epoch: int, epochs: int, epoch_size: int, validation_size: int, device: torch.device, lr: float, gamma: float, exponent: float, save_every: int, lam: float, weight_decay: float, uuid: customuuid.UUID8, filename: str):
     epochs += start_epoch - 1
 
     start = time.time()
@@ -88,7 +88,7 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
             optimizer.step(closure)
 
         if (save_every > 0 and epoch % save_every == 0) or epoch == epochs:
-            save(nnue=nnue, epoch=epoch, lr=lr, gamma=gamma, exponent=exponent, lam=lam, weight_decay=weight_decay, uuid=uuid)
+            save(nnue=nnue, epoch=epoch, lr=lr, gamma=gamma, exponent=exponent, lam=lam, weight_decay=weight_decay, uuid=uuid, filename=filename)
 
 
         scheduler.step()
@@ -99,8 +99,15 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
 
     print('training elapsed %.2f seconds' % (time.time() - start, ))
 
-def save(nnue: model.NNUE, epoch: int, lr: float, gamma: float, exponent: float, lam: float, weight_decay: float, uuid: str) -> None:
-    name = "%s-%g-%d.ckpt" % (uuid, lam, epoch)
+def save(nnue: model.NNUE, epoch: int, lr: float, gamma: float, exponent: float, lam: float, weight_decay: float, uuid: customuuid.UUID8, filename: str) -> None:
+    uuid = uuid.set_epoch(epoch)
+    filename = filename.replace('uuid', str(uuid))
+    filename = filename.replace('epoch', str(epoch))
+    filename = filename.replace('lr', str(lr))
+    filename = filename.replace('gamma', str(gamma))
+    filename = filename.replace('exponent', str(exponent))
+    filename = filename.replace('lambda', str(lam))
+    filename = filename.replace('weight_decay', str(weight_decay))
     print('uuid: %s' % (uuid, ))
     print('epoch: %d' % (epoch, ))
     print('lr: %g' % (lr, ))
@@ -115,7 +122,7 @@ def save(nnue: model.NNUE, epoch: int, lr: float, gamma: float, exponent: float,
                 'exponent': exponent,
                 'lam': lam,
                 'weight_decay': weight_decay,
-                'uuid': uuid}, name)
+                'uuid': int(uuid)}, filename)
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -138,6 +145,8 @@ def main() -> None:
     parser.add_argument('--exponent', type=float, help='Loss exponent', default=2.0)
     parser.add_argument('--lambda', dest='lam', type=float, help='Interpolate between evaluation and game results. 1.0 uses pure evaluation score, and 0.0 uses pure result as score.', default=1.0)
     parser.add_argument('--weight-decay', type=float, help='Weight decay', default=0.0)
+    parser.add_argument('--filename', type=str, help='Append to UUID, e.g. \'uuid-lambda.ckpt\'\n', default='uuid.ckpt')
+
 
     args, unknown = parser.parse_known_args()
     if len(unknown) >= 1:
@@ -148,6 +157,8 @@ def main() -> None:
     if len(unknown) >= 2:
         if args.validation_data is None:
             args.validation_data = unknown[1]
+
+    args.filename = args.filename.replace('{lambda}', '{lam}')
 
     device = torch.device(args.device)
 
@@ -160,7 +171,8 @@ def main() -> None:
     if args.lam < 0.0 or args.lam > 1.0:
         print('lambda must be between 0.0 and 1.0')
 
-    nnue_uuid: str | None = None
+    uuid = customuuid.UUID8()
+
     if args.load:
         if not args.load.endswith('.ckpt'):
             print('Loaded file is not a checkpoint file.')
@@ -175,10 +187,10 @@ def main() -> None:
         args.lam = ckpt['lam']
         args.weight_decay = ckpt['weight_decay']
         if 'uuid' in ckpt:
-            nnue_uuid = ckpt['uuid']
+            uuid = customuuid.UUID8(ckpt['uuid'], ckpt['epoch'])
         if args.info:
             if 'uuid' in ckpt:
-                print('uuid: %s' % (ckpt['uuid'], ))
+                print('uuid: %s' % (uuid, ))
             print('epochs: %d' % (ckpt['epoch'], ))
             print('lr: %g (%g)' % (ckpt['lr'], args.lr))
             print('gamma: %g' % (ckpt['gamma'], ))
@@ -186,9 +198,6 @@ def main() -> None:
             print('lambda: %g' % (ckpt['lam'], ))
             print('weight decay: %g' % (ckpt['weight_decay'], ))
             return
-
-    if not nnue_uuid:
-        nnue_uuid = str(uuid.uuid4())
 
     if batchbit.version() != model.VERSION_NNUE:
         print('version mismatch (%d != %d)' % (batchbit.version(), model.VERSION_NNUE))
@@ -208,7 +217,7 @@ def main() -> None:
     if not val_data:
         sys.exit(1)
 
-    train(nnue, train_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, device, args.lr, args.gamma, args.exponent, args.save_every, args.lam, args.weight_decay, nnue_uuid)
+    train(nnue, train_data, val_data, args.start_epoch, args.epochs, args.epoch_size, args.validation_size, device, args.lr, args.gamma, args.exponent, args.save_every, args.lam, args.weight_decay, uuid, args.filename)
 
     batchbit.loader_close(train_data)
     batchbit.loader_close(val_data)
