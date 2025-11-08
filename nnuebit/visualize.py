@@ -23,7 +23,7 @@ def visualize_ft(name: str, lib: ctypes.CDLL) -> None:
         plt.plot([i * 6 * 64, i * 6 * 64], [0, 4096 - 1], color='red')
     plt.colorbar()
     plt.axis('off')
-    plt.title(f'Input Weights {name}')
+    plt.title('Input Weights: %s' % (name, ))
 
 def visualize_psqt(name: str, lib: ctypes.CDLL) -> None:
     _, axs = plt.subplots(1, 5)
@@ -35,8 +35,8 @@ def visualize_psqt(name: str, lib: ctypes.CDLL) -> None:
         plt.colorbar(im, orientation='horizontal', pad=0.05)
         ax.set_aspect('equal')
         ax.axis('off')
-        ax.set_title(f'{pieces[i % 5]}')
-    plt.suptitle(f'Psqt Weights {name}')
+        ax.set_title(pieces[i % 5])
+    plt.suptitle('Psqt Weights: %s' % (name, ))
 
 def main() -> None:
     parser = argparse.ArgumentParser()

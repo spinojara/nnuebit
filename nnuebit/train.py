@@ -50,7 +50,7 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
 
     for epoch in range(start_epoch, epochs + 1):
         t = time.time()
-        print(f'starting epoch {epoch} of {epochs}')
+        print('starting epoch %d of %d' % (epoch, epochs))
 
         total = 0
         loss: float = 0
@@ -68,7 +68,7 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
         cp /= total
 
         losscp = 2 * inverse_sigmoid(1 / 2 + cp / 2)
-        print(f'loss is {round(loss, 5)} ({round(losscp)} cp) for validation data')
+        print('loss is %.5f (%d cp) for validation data' % (loss, round(losscp)))
         print('learning rate is now {:.2e}'.format(optimizer.param_groups[0]['lr']))
 
         total = 0
@@ -94,20 +94,20 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
         scheduler.step()
         t = time.time() - t
         eta = time.time() + (epochs - epoch) * t
-        print(f'epoch elapsed {round(t, 2)} seconds')
-        print(f'estimated time of arrival is {time.strftime('%Y-%m-%d %H:%M', time.localtime(eta))}\n')
+        print('epoch elapsed %.2f seconds' % (t, ))
+        print('estimated time of arrival is %s\n' % (time.strftime('%Y-%m-%d %H:%M', time.localtime(eta)), ))
 
-    print(f'training elapsed {round(time.time() - start, 2)} seconds')
+    print('training elapsed %.2f seconds' % (time.time() - start, ))
 
 def save(nnue: model.NNUE, epoch: int, lr: float, gamma: float, exponent: float, lam: float, weight_decay: float, uuid: str) -> None:
     name = "%s-%g-%d.ckpt" % (uuid, lam, epoch)
-    print(f'uuid: {uuid}')
-    print(f'epoch: {epoch}')
-    print(f'lr: {lr}')
-    print(f'gamma: {gamma}')
-    print(f'exponent: {exponent}')
-    print(f'lambda: {lam}')
-    print(f'weight decay: {weight_decay}')
+    print('uuid: %s' % (uuid, ))
+    print('epoch: %d' % (epoch, ))
+    print('lr: %g' % (lr, ))
+    print('gamma: %g' % (gamma, ))
+    print('exponent: %g' % (exponent, ))
+    print('lambda: %g' % (lam, ))
+    print('weight decay: %g' % (weight_decay, ))
     torch.save({'nnue': nnue.state_dict(),
                 'epoch': epoch,
                 'lr': lr,
@@ -178,20 +178,20 @@ def main() -> None:
             nnue_uuid = ckpt['uuid']
         if args.info:
             if 'uuid' in ckpt:
-                print(f'uuid: {ckpt['uuid']}')
-            print(f'epochs: {ckpt['epoch']}')
-            print(f'lr: {ckpt['lr']} ({args.lr})')
-            print(f'gamma: {ckpt['gamma']}')
-            print(f'exponent: {ckpt['exponent']}')
-            print(f'lambda: {ckpt['lam']}')
-            print(f'weight decay: {ckpt['weight_decay']}')
+                print('uuid: %s' % (ckpt['uuid'], ))
+            print('epochs: %d' % (ckpt['epoch'], ))
+            print('lr: %g (%g)' % (ckpt['lr'], args.lr))
+            print('gamma: %g' % (ckpt['gamma'], ))
+            print('exponent: %g' % (ckpt['exponent'], ))
+            print('lambda: %g' % (ckpt['lam'], ))
+            print('weight decay: %g' % (ckpt['weight_decay'], ))
             return
 
     if not nnue_uuid:
         nnue_uuid = str(uuid.uuid4())
 
     if batchbit.version() != model.VERSION_NNUE:
-        print(f'version mismatch')
+        print('version mismatch (%d != %d)' % (batchbit.version(), model.VERSION_NNUE))
         sys.exit(1)
 
     if args.training_data is None:

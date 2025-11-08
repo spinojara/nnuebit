@@ -26,10 +26,10 @@ def tcadjust(tc: str) -> str:
 
     tc = ''
     if moves > 0:
-        tc += f'{moves}/'
-    tc += f'{tcfactor * maintime}'
+        tc += '%d/' % (moves, )
+    tc += '%d' % (tcfactor * maintime, )
     if increment > 0:
-        tc += f'+{tcfactor * increment}'
+        tc += '+%d' % (tcfactor * increment, )
 
     return tc
 
@@ -88,8 +88,8 @@ def main() -> None:
                '-games', '2',
                '-rounds', '100000',
                '-concurrency', str(numcpus(args.cpus)),
-               '-each', 'proto=uci', f'tc={adjustedtc}', 'timemargin=10000',
-               '-openings', 'format=epd', f'file={args.book}', 'order=random',
+               '-each', 'proto=uci', 'tc=%s' % (adjustedtc, ), 'timemargin=10000',
+               '-openings', 'format=epd', 'file=%s' % (args.book, ), 'order=random',
                '-repeat',
                '-draw', 'movenumber=40', 'movecount=8', 'score=10',
                '-resign', 'movecount=3', 'score=800', 'twosided=true',
@@ -98,9 +98,9 @@ def main() -> None:
                '-pgnout', 'file=nnue.pgn']
 
     for nnue in args.nnue:
-        command.extend(['-engine', f'name={nnue.split('/')[-1]}', f'cmd={args.bitbit}', f'option.FileNNUE={nnue}', 'restart=on'])
+        command.extend(['-engine', 'name=%s' % (nnue.split('/')[-1], ), 'cmd=%s' % (args.bitbit, ), 'option.FileNNUE=%s' % (nnue, ), 'restart=on'])
     if args.reference is not None:
-        command.extend(['-engine', f'name=reference', f'cmd={args.reference}', 'restart=on'])
+        command.extend(['-engine', 'name=reference', 'cmd=%s' % (args.reference, ), 'restart=on'])
 
     print(*command, sep=' ')
     subprocess.run(command)
