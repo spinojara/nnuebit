@@ -80,22 +80,27 @@ def main() -> None:
         print('Input at least two NNUE networks or one NNUE network and a reference.')
         sys.exit(1)
 
+    adjustedtc = tcadjust(args.tc)
+
     command = ['fastchess',
                '-use-affinity', args.cpus,
                '-tournament', 'roundrobin',
                '-games', '2',
-               '-rounds', '10000',
+               '-rounds', '100000',
                '-concurrency', str(numcpus(args.cpus)),
-               '-each', 'proto=uci', f'tc={tcadjust(args.tc)}',
+               '-each', 'proto=uci', f'tc={adjustedtc}', 'timemargin=10000',
                '-openings', 'format=epd', f'file={args.book}', 'order=random',
                '-repeat',
+               '-draw', 'movenumber=40', 'movecount=8', 'score=10',
+               '-resign', 'movecount=3', 'score=800', 'twosided=true',
+               '-recover',
                '-ratinginterval', '2',
                '-pgnout', 'file=nnue.pgn']
 
     for nnue in args.nnue:
-        command.extend(['-engine', f'name={nnue.split('/')[-1]}', f'cmd={args.bitbit}', f'option.FileNNUE={nnue}'])
+        command.extend(['-engine', f'name={nnue.split('/')[-1]}', f'cmd={args.bitbit}', f'option.FileNNUE={nnue}', 'restart=on'])
     if args.reference is not None:
-        command.extend(['-engine', f'name=reference', f'cmd={args.reference}'])
+        command.extend(['-engine', f'name=reference', f'cmd={args.reference}', 'restart=on'])
 
     print(*command, sep=' ')
     subprocess.run(command)
