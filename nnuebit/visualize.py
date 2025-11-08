@@ -51,10 +51,10 @@ def main() -> None:
     lib.read_ft_weights.argtypes = [ctypes.c_char_p]
     lib.read_ft_weights.restype = ctypes.c_int
 
-    lib.image_ft.argtypes = [np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags="C_CONTIGUOUS")]
+    lib.image_ft.argtypes = [np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='C_CONTIGUOUS')]
     lib.image_ft.restype = None
 
-    lib.image_psqt.argtypes = [np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags="C_CONTIGUOUS"), ctypes.c_int]
+    lib.image_psqt.argtypes = [np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='C_CONTIGUOUS'), ctypes.c_int]
     lib.image_psqt.restype = None
 
     lib.read_ft_weights(ctypes.c_char_p(args.file.encode()))
