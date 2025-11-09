@@ -99,7 +99,7 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
 
     print('training elapsed %.2f seconds' % (time.time() - start, ))
 
-def save(nnue: model.NNUE, epoch: int, lr: float, gamma: float, exponent: float, lam: float, weight_decay: float, uuid: customuuid.UUID8, filename: str) -> None:
+def save(nnue: model.NNUE, epoch: int, lr: float, gamma: float, exponent: float, lam: float, weight_decay: float, uuid: customuuid.UUID8, filename: str, dry_run: bool = False) -> None:
     uuid = uuid.set_epoch(epoch)
     filename = filename.replace('uuid', str(uuid))
     filename = filename.replace('epoch', str(epoch))
@@ -108,6 +108,9 @@ def save(nnue: model.NNUE, epoch: int, lr: float, gamma: float, exponent: float,
     filename = filename.replace('exponent', str(exponent))
     filename = filename.replace('lambda', str(lam))
     filename = filename.replace('weight_decay', str(weight_decay))
+    if dry_run:
+        print('Will save to the file \'%s\'' % (filename, ))
+        return
     print('uuid: %s' % (uuid, ))
     print('epoch: %d' % (epoch, ))
     print('lr: %g' % (lr, ))
@@ -161,6 +164,7 @@ def main() -> None:
     args.filename = args.filename.replace('{lambda}', '{lam}')
 
     device = torch.device(args.device)
+    print('Running on \'%s\'' % (torch.cuda.get_device_name(device), ))
 
     nnue = model.NNUE().to(device=device, non_blocking=True)
 
@@ -209,6 +213,8 @@ def main() -> None:
     if args.validation_data is None:
         print('need --validation-data')
         sys.exit(1)
+
+    save(nnue=nnue, epoch=args.epochs, lr=args.lr, gamma=args.gamma, exponent=args.exponent, lam=args.lam, weight_decay=args.weight_decay, uuid=uuid, filename=args.filename, dry_run=True)
 
     train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.random_skip, 1, args.lam < 1.0)
     if not train_data:
