@@ -16,13 +16,13 @@ batch_fetch = lib.batch_fetch
 batch_fetch.argtypes = [ctypes.c_void_p]
 batch_fetch.restype = ctypes.POINTER(Batch)
 
-loader_open = lib.loader_open
-loader_open.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_double, ctypes.c_int, ctypes.c_int]
-loader_open.restype = ctypes.c_void_p
+batch_free = lib.batch_free
+batch_free.argtypes = [ctypes.POINTER(Batch)]
+batch_free.restype = None
 
-loader_reset = lib.loader_reset
-loader_reset.argtypes = [ctypes.c_void_p]
-loader_reset.restype = None
+loader_open = lib.loader_open
+loader_open.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_double, ctypes.c_int, ctypes.c_int]
+loader_open.restype = ctypes.c_void_p
 
 loader_close = lib.loader_close
 loader_close.argtypes = [ctypes.c_void_p]

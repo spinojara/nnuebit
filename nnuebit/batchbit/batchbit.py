@@ -15,6 +15,7 @@ class Batch(ctypes.Structure):
             ('ind2', ctypes.POINTER(ctypes.c_int32)),
             ('eval', ctypes.POINTER(ctypes.c_float)),
             ('result', ctypes.POINTER(ctypes.c_float)),
+            ('_next', ctypes.c_void_p),
     ]
 
     def get_tensors(self, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:

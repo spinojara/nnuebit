@@ -45,9 +45,6 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
         ], lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
 
-    batchbit.loader_reset(train_data)
-    batchbit.loader_reset(val_data)
-
     for epoch in range(start_epoch, epochs + 1):
         t = time.time()
         print('starting epoch %d of %d' % (epoch, epochs))
@@ -64,6 +61,7 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
             output = nnue(f1, f2)
             loss += loss_fn(output, eval, result, exponent, lam).item()
             cp += loss_fn(output, eval, result, 1.0, lam).item()
+            batchbit.batch_free(batch)
         loss /= total
         cp /= total
 
@@ -84,6 +82,7 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
                 loss = loss_fn(output, eval, result, exponent, lam) / batch.contents.size
                 loss.backward()
                 return loss
+            batchbit.batch_free(batch)
             nnue.clamp_weights()
             optimizer.step(closure)
 
@@ -133,7 +132,7 @@ def main() -> None:
     parser.add_argument('--training-data', type=str, help='Training data file', default=None)
     parser.add_argument('--validation-data', type=str, help='Validation data file', default=None)
     parser.add_argument('--random-skip', type=float, help='Random skipping frequency', default=0.8)
-    parser.add_argument('--batch-size', type=int, help='Batch size', default=16384)
+    parser.add_argument('--batch-size', type=int, help='Batch size', default=None)
     parser.add_argument('--device', type=str, help='Pytorch device', default='cuda')
     parser.add_argument('--load', type=str, help='Load pytorch checkpoint file (.ckpt)', default='')
     parser.add_argument('--info', action='store_true', help='Print information about the loaded checkpoint file')
@@ -149,9 +148,14 @@ def main() -> None:
     parser.add_argument('--lambda', dest='lam', type=float, help='Interpolate between evaluation and game results. 1.0 uses pure evaluation score, and 0.0 uses pure result as score.', default=1.0)
     parser.add_argument('--weight-decay', type=float, help='Weight decay', default=0.0)
     parser.add_argument('--filename', type=str, help='Append to UUID, e.g. \'uuid-lambda.ckpt\'\n', default='uuid.ckpt')
+    parser.add_argument('--jobs', type=int, help='Amount of dataloader jobs.', default=4)
 
 
     args, unknown = parser.parse_known_args()
+    if args.jobs < 1:
+        print('--jobs must be positive')
+        sys.exit(1)
+
     if len(unknown) >= 1:
         if args.training_data is None:
             args.training_data = unknown[0]
@@ -164,7 +168,16 @@ def main() -> None:
     args.filename = args.filename.replace('{lambda}', '{lam}')
 
     device = torch.device(args.device)
-    print('Running on \'%s\'' % (torch.cuda.get_device_name(device), ))
+    device_name = torch.cuda.get_device_name(device)
+    print('Running on \'%s\'' % (device_name, ))
+
+    if args.batch_size is None:
+        if 'RTX 3070 Ti' in device_name:
+            args.batch_size = 32768
+        elif 'GTX 1660 SUPER' in device_name:
+            args.batch_size = 12288
+        else:
+            args.batch_size = 16384
 
     nnue = model.NNUE().to(device=device, non_blocking=True)
 
@@ -216,10 +229,10 @@ def main() -> None:
 
     save(nnue=nnue, epoch=args.epochs, lr=args.lr, gamma=args.gamma, exponent=args.exponent, lam=args.lam, weight_decay=args.weight_decay, uuid=uuid, filename=args.filename, dry_run=True)
 
-    train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.random_skip, 1, args.lam < 1.0)
+    train_data = batchbit.loader_open(args.training_data.encode(), args.batch_size, args.jobs, args.random_skip, 1, args.lam < 1.0)
     if not train_data:
         sys.exit(1)
-    val_data = batchbit.loader_open(args.validation_data.encode(), args.batch_size, 0.0, 1, args.lam < 1.0)
+    val_data = batchbit.loader_open(args.validation_data.encode(), args.batch_size, args.jobs, 0.0, 1, args.lam < 1.0)
     if not val_data:
         sys.exit(1)
 
