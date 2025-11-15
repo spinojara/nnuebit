@@ -19,19 +19,15 @@ class Batch(ctypes.Structure):
     ]
 
     def get_tensors(self, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        eval = torch.from_numpy(numpy.ctypeslib.as_array(self.eval, shape=(self.size, 1))).pin_memory().to(device=device, non_blocking=True)
-        result = torch.from_numpy(numpy.ctypeslib.as_array(self.result, shape=(self.size, 1))).pin_memory().to(device=device, non_blocking=True)
+        eval = torch.tensor(numpy.ctypeslib.as_array(self.eval, shape=(self.size, 1)), device=device)
+        result = torch.tensor(numpy.ctypeslib.as_array(self.result, shape=(self.size, 1)), device=device)
 
-        val1 = torch.ones(self.ind_active).pin_memory().to(device=device, non_blocking=True)
-        val2 = torch.ones(self.ind_active).pin_memory().to(device=device, non_blocking=True)
+        val = torch.ones(self.ind_active, device=device)
 
-        ind1 = torch.transpose(torch.from_numpy(numpy.ctypeslib.as_array(self.ind1, shape=(self.ind_active, 2))), 0, 1).pin_memory().to(device=device, non_blocking=True)
-        ind2 = torch.transpose(torch.from_numpy(numpy.ctypeslib.as_array(self.ind2, shape=(self.ind_active, 2))), 0, 1).pin_memory().to(device=device, non_blocking=True)
+        ind1 = torch.transpose(torch.tensor(numpy.ctypeslib.as_array(self.ind1, shape=(self.ind_active, 2)), device=device), 0, 1)
+        ind2 = torch.transpose(torch.tensor(numpy.ctypeslib.as_array(self.ind2, shape=(self.ind_active, 2)), device=device), 0, 1)
 
-        f1 = torch.sparse_coo_tensor(ind1, val1, (self.size, model.FT_IN_DIMS + model.VIRTUAL), check_invariants=False).to(device=device, non_blocking=True)
-        f2 = torch.sparse_coo_tensor(ind2, val2, (self.size, model.FT_IN_DIMS + model.VIRTUAL), check_invariants=False).to(device=device, non_blocking=True)
-
-        f1._coalesced_(True)
-        f2._coalesced_(True)
+        f1 = torch.sparse_coo_tensor(ind1, val, (self.size, model.FT_IN_DIMS + model.VIRTUAL), check_invariants=False, is_coalesced=True)
+        f2 = torch.sparse_coo_tensor(ind2, val, (self.size, model.FT_IN_DIMS + model.VIRTUAL), check_invariants=False, is_coalesced=True)
 
         return f1, f2, eval, result
