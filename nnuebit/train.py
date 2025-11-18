@@ -18,6 +18,8 @@ def sigmoid(x: float) -> float:
     return 1 / (1 + math.exp(-sigmoid_scaling * x))
 
 def inverse_sigmoid(y: float) -> float:
+    epsilon = 1e-6
+    y = min(max(y, epsilon), 1 - epsilon)
     return -math.log(1 / y - 1) / sigmoid_scaling
 
 def loss_fn(output: torch.Tensor, eval: torch.Tensor, result: torch.Tensor, exponent: float, lam: float) -> torch.Tensor:
@@ -51,7 +53,7 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
 
         total = 0
         loss: float = 0
-        cp: float = 0
+        losscp: float = 0
         while total < validation_size:
             batch = batchbit.batch_fetch(val_data)
             if not batch:
@@ -60,14 +62,14 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
             total += batch.contents.size
             output = nnue(f1, f2)
             loss += loss_fn(output, eval, result, exponent, lam).item()
-            cp += loss_fn(output, eval, result, 1.0, lam).item()
+            losscp += loss_fn(output, eval, result, 1.0, lam).item()
             batchbit.batch_free(batch)
         loss /= total
-        cp /= total
+        losscp /= total
 
-        losscp = 2 * inverse_sigmoid(1 / 2 + cp / 2)
+        losscp = 2 * inverse_sigmoid(1 / 2 + losscp / 2)
         print('loss is %.5f (%d cp) for validation data' % (loss, round(losscp)))
-        print('learning rate is now {:.2e}'.format(optimizer.param_groups[0]['lr']))
+        print('learning rate is now %g' % optimizer.param_groups[0]['lr'])
 
         total = 0
         while total < epoch_size:
@@ -86,15 +88,15 @@ def train(nnue: model.NNUE, train_data: ctypes.c_void_p, val_data: ctypes.c_void
             nnue.clamp_weights()
             optimizer.step(closure)
 
+        scheduler.step()
+        if epoch < epochs:
+            t = time.time() - t
+            eta = time.time() + (epochs - epoch) * t
+            print('epoch elapsed %.2f seconds' % (t, ))
+            print('estimated time of arrival is %s\n' % (time.strftime('%Y-%m-%d %H:%M', time.localtime(eta)), ))
+
         if (save_every > 0 and epoch % save_every == 0) or epoch == epochs:
             save(nnue=nnue, epoch=epoch, lr=lr, gamma=gamma, exponent=exponent, lam=lam, weight_decay=weight_decay, uuid=uuid, filename=filename)
-
-
-        scheduler.step()
-        t = time.time() - t
-        eta = time.time() + (epochs - epoch) * t
-        print('epoch elapsed %.2f seconds' % (t, ))
-        print('estimated time of arrival is %s\n' % (time.strftime('%Y-%m-%d %H:%M', time.localtime(eta)), ))
 
     print('training elapsed %.2f seconds' % (time.time() - start, ))
 
